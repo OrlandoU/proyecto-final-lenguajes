@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "871215125336",
+    "project_id": "trakit-d677e",
+    "storage_bucket": "trakit-d677e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:871215125336:android:764b3d9676dba6ffc50b2d",
+        "android_client_info": {
+          "package_name": "com.example.trakit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB0q7XbImfdD49USJpzRjZSKy17AyqD7kY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
