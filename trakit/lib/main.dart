@@ -1,5 +1,12 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:go_router/go_router.dart';
+import 'package:trakit/client/views/dashboard.dart';
+import 'package:trakit/client/views/home_page.dart';
+import 'package:trakit/client/views/login.dart';
+import 'package:trakit/client/views/new_goal.dart';
+import 'package:trakit/client/views/signup.dart';
 import 'package:trakit/src/firebase/auth.dart';
 import 'firebase_options.dart';
 
@@ -15,12 +22,53 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Flutter Demo',
       theme: ThemeData(
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: .fromSeed(seedColor: Colors.greenAccent),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      routerConfig: GoRouter(
+        initialLocation: '/',
+        redirect: (context, state) {
+          // Aquí puedes agregar lógica de redirección basada en la autenticación
+          // final user = FirebaseAuth.instance.currentUser;
+
+          // final freeRoutes = {'/signup'};
+
+          // if (user == null && !freeRoutes.contains(state.fullPath)) {
+          //   return '/login';
+          // }
+
+          return null;
+        },
+        routes: [
+          GoRoute(
+            path: '/',
+            name: 'home',
+            builder: (context, state) => HomeView(),
+          ),
+          GoRoute(
+            path: '/login',
+            name: 'login',
+            builder: (context, state) => LoginPage(),
+            ),
+          GoRoute(
+            path: '/signup',
+            name: 'signup',
+            builder: (context, state) => SignupPage(),
+          ),
+          GoRoute(
+            path: '/new_goal',
+            name: 'new_goal',
+            builder: (context, state) => NewGoalView(),
+          ),
+          GoRoute(
+            path: '/dashboard',
+            name: 'dashboard',
+            builder: (context, state) => DashboardView(),
+          )
+        ]
+      ),
     );
   }
 }
