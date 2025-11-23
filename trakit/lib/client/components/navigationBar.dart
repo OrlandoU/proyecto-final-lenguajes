@@ -34,7 +34,9 @@ class NavigationbarE extends StatelessWidget {
               child: BottomButton(
                 icon: Icons.people,
                 label: 'Usuario',
-                onTap: () {},
+                onTap: () {
+                  context.pushNamed('user');
+                },
               ),
             ),
           ],

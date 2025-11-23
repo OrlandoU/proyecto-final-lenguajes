@@ -1,7 +1,7 @@
 class Goal {
   final String id;
-  final int goalType;
-  final int amountType;
+  final String goalType;
+  final String targetAmount;
   final String userId;
   final String title;
   final String description;
@@ -10,7 +10,7 @@ class Goal {
   Goal({
     required this.id,
     required this.goalType,
-    required this.amountType,
+    required this.targetAmount,
     required this.userId,
     required this.title,
     required this.description,
@@ -20,7 +20,7 @@ class Goal {
   factory Goal.fromJson(Map<String, dynamic> json) => Goal(
         id: json['id'].toString(),
         goalType: json['tipo_objetivo'],
-        amountType: json['tipo_monto'],
+        targetAmount: json['meta'],
         userId: json['idUsuario'].toString(),
         title: json['titulo'],
         description: json['descripcion'],
@@ -30,7 +30,7 @@ class Goal {
   Map<String, dynamic> toJson() {
     return {
       'tipo_objetivo': goalType,
-      'tipo_monto': amountType,
+      'meta': targetAmount,
       'idUsuario': userId,
       'titulo': title,
       'descripcion': description,

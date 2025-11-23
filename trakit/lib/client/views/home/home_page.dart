@@ -55,14 +55,18 @@ class HomeView extends StatelessWidget {
                   icon: Icons.flag,
                   title: 'Nuevo objetivo',
                   color: Colors.green,
-                  onTap: () {},
+                  onTap: () {
+                    context.pushNamed('new_goal');
+                  },
                 ),
                 SizedBox(width: 12),
                 _QuickActionCard(
                   icon: Icons.auto_graph,
-                  title: 'Progreso',
+                  title: 'Objetivos',
                   color: Colors.blue,
-                  onTap: () {},
+                  onTap: () {
+                    context.pushNamed('goals');
+                  },
                 ),
               ],
             ),

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:trakit/client/components/bottom_button.dart';
 import 'package:trakit/client/components/mode_option.dart';
 import 'package:trakit/client/components/navigationBar.dart';
 
-class NewGoalView extends StatelessWidget {
-  const NewGoalView({super.key});
+class SelectGoalView extends StatelessWidget {
+  const SelectGoalView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +39,7 @@ class NewGoalView extends StatelessWidget {
                   'Ahorra el mismo monto cada semana durante 52 semanas.',
               icon: Icons.attach_money,
               onTap: () {
-                // Navega a configuración de monto fijo
+                context.pushNamed('create-goal', extra: 'fijo');
               },
             ),
             const SizedBox(height: 16),
@@ -50,7 +51,7 @@ class NewGoalView extends StatelessWidget {
                   'El monto aumenta cada semana según el valor inicial.',
               icon: Icons.trending_up,
               onTap: () {
-                // Navega a configuración incremental
+                context.pushNamed('create-goal', extra: 'incremental');
               },
             ),
 
@@ -60,7 +61,7 @@ class NewGoalView extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: NavigationbarE()
+      // bottomNavigationBar: NavigationbarE()
     );
   }
 }
