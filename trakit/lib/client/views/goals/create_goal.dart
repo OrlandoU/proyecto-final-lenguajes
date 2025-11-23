@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:trakit/client/components/utils.dart';
+import 'package:trakit/client/models/goal.dart';
+import 'package:trakit/src/firebase/firestore_service.dart';
 
 class CreateGoalView extends StatefulWidget {
-  final String mode; // "fijo" or "incremental"
+  final String mode;
 
   const CreateGoalView({super.key, required this.mode});
 
@@ -15,24 +18,34 @@ class _CreateGoalViewState extends State<CreateGoalView> {
   final TextEditingController amountController = TextEditingController();
   final TextEditingController incrementalController = TextEditingController();
 
+  final FirestoreService _firestoreService = FirestoreService();
+
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    descriptionController.dispose();
+    amountController.dispose();
+    incrementalController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isFixed = widget.mode == "fijo";
     final isIncremental = widget.mode == "incremental";
 
-    // APPBAR TITLE
     final String appBarTitle = isFixed
         ? "Crear Objetivo Fijo"
         : "Crear Objetivo Incremental";
 
-    // MODE DESCRIPTION
     final String modeDescription = isFixed
         ? "Este objetivo usará un monto fijo que aportarás cada semana."
         : "Este objetivo iniciará con un monto base y aumentará semanalmente.";
 
     return Scaffold(
       appBar: AppBar(title: Text(appBarTitle), centerTitle: true),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -42,10 +55,7 @@ class _CreateGoalViewState extends State<CreateGoalView> {
               "Nuevo Objetivo",
               style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
             ),
-
             const SizedBox(height: 12),
-
-            // DESCRIPTION DEPENDING ON MODE
             Text(
               modeDescription,
               style: TextStyle(
@@ -54,32 +64,23 @@ class _CreateGoalViewState extends State<CreateGoalView> {
                 height: 1.4,
               ),
             ),
-
             const SizedBox(height: 25),
-
             _label("Título del objetivo"),
             _inputField(
               controller: titleController,
               hint: "Ej: Fondo para viaje",
             ),
-
             const SizedBox(height: 20),
-
             _label("Descripción"),
             _inputField(
               controller: descriptionController,
               hint: "Agrega una breve descripción...",
               maxLines: 3,
             ),
-
             const SizedBox(height: 25),
-
-            // MODE-SPECIFIC INPUTS
             if (isFixed) _buildFixedModeFields(),
             if (isIncremental) _buildIncrementalModeFields(),
-
             const SizedBox(height: 40),
-
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -90,17 +91,26 @@ class _CreateGoalViewState extends State<CreateGoalView> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                onPressed: () {
-                  // TODO: save
-                },
-                child: const Text(
-                  "Crear Objetivo",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                onPressed: _saving ? null : _handleSave,
+                child: _saving
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      )
+                    : const Text(
+                        "Crear Objetivo",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -109,7 +119,6 @@ class _CreateGoalViewState extends State<CreateGoalView> {
     );
   }
 
-  // FIXED MODE
   Widget _buildFixedModeFields() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,7 +133,6 @@ class _CreateGoalViewState extends State<CreateGoalView> {
     );
   }
 
-  // INCREMENTAL MODE
   Widget _buildIncrementalModeFields() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,9 +143,7 @@ class _CreateGoalViewState extends State<CreateGoalView> {
           hint: "Ej: 10,000",
           keyboardType: TextInputType.number,
         ),
-
         const SizedBox(height: 20),
-
         _label("Incremento por semana"),
         _inputField(
           controller: incrementalController,
@@ -148,7 +154,6 @@ class _CreateGoalViewState extends State<CreateGoalView> {
     );
   }
 
-  // WIDGET HELPERS
   Widget _label(String text) {
     return Text(
       text,
@@ -183,5 +188,94 @@ class _CreateGoalViewState extends State<CreateGoalView> {
         decoration: InputDecoration(hintText: hint, border: InputBorder.none),
       ),
     );
+  }
+
+  Future<void> _handleSave() async {
+    final title = titleController.text.trim();
+    final description = descriptionController.text.trim();
+    final amountText = amountController.text.trim();
+    final incrementText = incrementalController.text.trim();
+
+    if (title.isEmpty) {
+      Utils.showSnackBar(
+        context: context,
+        title: "El título del objetivo es obligatorio",
+        color: Colors.red,
+      );
+      return;
+    }
+
+    if (description.isEmpty) {
+      Utils.showSnackBar(
+        context: context,
+        title: "La descripción es obligatoria",
+        color: Colors.red,
+      );
+      return;
+    }
+
+    if (amountText.isEmpty) {
+      Utils.showSnackBar(
+        context: context,
+        title: "La meta final es obligatoria",
+        color: Colors.red,
+      );
+      return;
+    }
+
+    if (widget.mode == 'incremental' && incrementText.isEmpty) {
+      Utils.showSnackBar(
+        context: context,
+        title: "El incremento por semana es obligatorio",
+        color: Colors.red,
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+
+    try {
+      final cleanedAmount = amountText.replaceAll(',', '');
+
+      final goal = Goal(
+        id: '',
+        goalType: widget.mode,
+        targetAmount: cleanedAmount,
+        userId: _firestoreService.currentUserId ?? '',
+        title: title,
+        description: description,
+        startDate: DateTime.now().toIso8601String(),
+      );
+
+      final newId = await _firestoreService.createGoal(goal);
+
+      if (!mounted) return;
+
+      if (newId != null) {
+        Utils.showSnackBar(
+          context: context,
+          title: "Objetivo creado correctamente",
+          color: Colors.green,
+        );
+        Navigator.pop(context);
+      } else {
+        Utils.showSnackBar(
+          context: context,
+          title: "Ocurrió un error al crear el objetivo",
+          color: Colors.red,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Utils.showSnackBar(
+        context: context,
+        title: "Error inesperado: $e",
+        color: Colors.red,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
   }
 }
