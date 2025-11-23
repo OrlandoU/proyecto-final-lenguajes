@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:trakit/client/models/goal.dart';
+import 'package:trakit/client/components/utils.dart';
 import 'package:trakit/src/firebase/firestore_service.dart';
 
 class GoalsView extends StatelessWidget {
-  GoalsView({super.key});
+  const GoalsView({super.key});
 
-  final FirestoreService _firestoreService = FirestoreService();
+  static final FirestoreService _firestoreService = FirestoreService();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Mis Objetivos"), centerTitle: true),
-
       body: StreamBuilder<List<Goal>>(
         stream: _firestoreService.goalsStream(),
         builder: (context, snapshot) {
@@ -49,12 +49,8 @@ class GoalsView extends StatelessWidget {
             itemCount: goals.length,
             itemBuilder: (context, index) {
               final goal = goals[index];
-
-              // Por ahora, el progreso es un placeholder (0%).
-              // Luego lo podemos calcular en base a las semanas (Week).
               final double progress = 0.0;
 
-              // Mostrar el tipo más "bonito"
               final String type = goal.goalType.toLowerCase() == 'incremental'
                   ? 'Incremental'
                   : 'Fijo';
@@ -65,10 +61,33 @@ class GoalsView extends StatelessWidget {
                 progress: progress,
                 type: type,
                 onTap: () {
-                  // Aquí podrías pasar el id de la meta a la vista de detalles
-                  // por ejemplo usando extra o params:
-                  // context.pushNamed('goal-details', extra: goal);
                   context.pushNamed('goal-details');
+                },
+                onDelete: () {
+                  Utils.showConfirm(
+                    context: context,
+                    confirmButton: () async {
+                      final success = await _firestoreService.deleteGoal(
+                        goal.id,
+                      );
+
+                      Navigator.of(context).pop();
+
+                      if (success) {
+                        Utils.showSnackBar(
+                          context: context,
+                          title: 'Objetivo eliminado correctamente',
+                          color: Colors.green,
+                        );
+                      } else {
+                        Utils.showSnackBar(
+                          context: context,
+                          title: 'No se pudo eliminar el objetivo',
+                          color: Colors.red,
+                        );
+                      }
+                    },
+                  );
                 },
               );
             },
@@ -78,15 +97,13 @@ class GoalsView extends StatelessWidget {
     );
   }
 
-  // ---------------------------------------
-  // GOAL CARD WIDGET
-  // ---------------------------------------
   Widget _goalCard({
     required String title,
     required String description,
     required double progress,
     required String type,
     required VoidCallback onTap,
+    required VoidCallback onDelete,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -107,13 +124,13 @@ class GoalsView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title & Type Badge
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Text(
                     title,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 20,
@@ -139,21 +156,21 @@ class GoalsView extends StatelessWidget {
                     ),
                   ),
                 ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: onDelete,
+                  tooltip: 'Eliminar objetivo',
+                ),
               ],
             ),
-
             const SizedBox(height: 10),
-
             Text(
               description,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
             ),
-
             const SizedBox(height: 20),
-
-            // PROGRESS BAR
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: LinearProgressIndicator(
@@ -163,9 +180,7 @@ class GoalsView extends StatelessWidget {
                 color: const Color(0xFF2ECC71),
               ),
             ),
-
             const SizedBox(height: 10),
-
             Text(
               "${(progress * 100).toStringAsFixed(0)}% completado",
               style: TextStyle(
