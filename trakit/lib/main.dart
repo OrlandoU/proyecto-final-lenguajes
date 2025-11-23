@@ -11,6 +11,7 @@ import 'package:trakit/client/views/home/home_page.dart';
 import 'package:trakit/client/views/auth/login_view.dart';
 import 'package:trakit/client/views/goals/select_goal.dart';
 import 'package:trakit/client/views/auth/signup_view.dart';
+import 'package:trakit/client/models/goal.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -27,9 +28,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: .fromSeed(seedColor: Colors.greenAccent),
-      ),
+      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.greenAccent)),
       routerConfig: GoRouter(
         initialLocation: '/',
         redirect: (context, state) {
@@ -54,7 +53,7 @@ class MyApp extends StatelessWidget {
             path: '/login',
             name: 'login',
             builder: (context, state) => LoginPage(),
-            ),
+          ),
           GoRoute(
             path: '/signup',
             name: 'signup',
@@ -73,13 +72,13 @@ class MyApp extends StatelessWidget {
           GoRoute(
             path: '/create-goal',
             name: 'create-goal',
-            builder: (context, state){
+            builder: (context, state) {
               final mode = state.extra as String;
-              return CreateGoalView(mode:mode);
-            }
+              return CreateGoalView(mode: mode);
+            },
           ),
           GoRoute(
-            path:'/user',
+            path: '/user',
             name: 'user',
             builder: (context, state) => UserView(),
           ),
@@ -91,14 +90,26 @@ class MyApp extends StatelessWidget {
           GoRoute(
             path: '/goal-details',
             name: 'goal-details',
-            builder: (context, state) => GoalDetailsView()
+            builder: (context, state) {
+              final goal = state.extra as Goal;
+              return GoalDetailsView(goal: goal);
+            },
           ),
           GoRoute(
             path: '/week-update',
             name: 'week-update',
-            builder: (context, state) => SubmitWeekAmountView(week: 8, expectedAmount: 1223, onSubmit: (double t) {}),
-          )
-        ]
+            builder: (context, state) {
+              final data = state.extra as Map<String, dynamic>;
+              return SubmitWeekAmountView(
+                week: data['week'] as int,
+                expectedAmount: data['expectedAmount'] as double,
+                onSubmit: (double value) {
+                },
+                goalId: data['goalId'] as String,
+              );
+            },
+          ),
+        ],
       ),
     );
   }

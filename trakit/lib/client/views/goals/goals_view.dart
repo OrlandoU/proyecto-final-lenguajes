@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:trakit/client/models/goal.dart';
+import 'package:trakit/client/models/week.dart';
 import 'package:trakit/client/components/utils.dart';
 import 'package:trakit/src/firebase/firestore_service.dart';
 
 class GoalsView extends StatelessWidget {
-  const GoalsView({super.key});
+  GoalsView({super.key});
 
-  static final FirestoreService _firestoreService = FirestoreService();
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   Widget build(BuildContext context) {
@@ -49,43 +50,54 @@ class GoalsView extends StatelessWidget {
             itemCount: goals.length,
             itemBuilder: (context, index) {
               final goal = goals[index];
-              final double progress = 0.0;
 
-              final String type = goal.goalType.toLowerCase() == 'incremental'
-                  ? 'Incremental'
-                  : 'Fijo';
+              return StreamBuilder<List<Week>>(
+                stream: _firestoreService.weeksStreamByGoal(goal.id),
+                builder: (context, weekSnapshot) {
+                  final weeks = weekSnapshot.data ?? [];
 
-              return _goalCard(
-                title: goal.title,
-                description: goal.description,
-                progress: progress,
-                type: type,
-                onTap: () {
-                  context.pushNamed('goal-details');
-                },
-                onDelete: () {
-                  Utils.showConfirm(
-                    context: context,
-                    confirmButton: () async {
-                      final success = await _firestoreService.deleteGoal(
-                        goal.id,
+                  final double progress = _calculateProgress(goal, weeks);
+
+                  final String type =
+                      goal.goalType.toLowerCase() == 'incremental'
+                          ? 'Incremental'
+                          : 'Fijo';
+
+                  return _goalCard(
+                    title: goal.title,
+                    description: goal.description,
+                    progress: progress,
+                    type: type,
+                    onTap: () {
+                      context.pushNamed(
+                        'goal-details',
+                        extra: goal,
                       );
+                    },
+                    onDelete: () {
+                      Utils.showConfirm(
+                        context: context,
+                        confirmButton: () async {
+                          final success =
+                              await _firestoreService.deleteGoal(goal.id);
 
-                      Navigator.of(context).pop();
+                          Navigator.of(context).pop();
 
-                      if (success) {
-                        Utils.showSnackBar(
-                          context: context,
-                          title: 'Objetivo eliminado correctamente',
-                          color: Colors.green,
-                        );
-                      } else {
-                        Utils.showSnackBar(
-                          context: context,
-                          title: 'No se pudo eliminar el objetivo',
-                          color: Colors.red,
-                        );
-                      }
+                          if (success) {
+                            Utils.showSnackBar(
+                              context: context,
+                              title: 'Objetivo eliminado correctamente',
+                              color: Colors.green,
+                            );
+                          } else {
+                            Utils.showSnackBar(
+                              context: context,
+                              title: 'No se pudo eliminar el objetivo',
+                              color: Colors.red,
+                            );
+                          }
+                        },
+                      );
                     },
                   );
                 },
@@ -95,6 +107,26 @@ class GoalsView extends StatelessWidget {
         },
       ),
     );
+  }
+
+  double _calculateProgress(Goal goal, List<Week> weeks) {
+    final String rawTarget = goal.targetAmount;
+    final double target = double.tryParse(
+          rawTarget.replaceAll(',', '').replaceAll('L', '').trim(),
+        ) ??
+        0;
+
+    if (target <= 0) return 0;
+
+    final double totalReal = weeks.fold<double>(
+      0,
+      (prev, w) => prev + (w.realAmount.toDouble()),
+    );
+
+    final progress = totalReal / target;
+    if (progress < 0) return 0;
+    if (progress > 1) return 1;
+    return progress;
   }
 
   Widget _goalCard({

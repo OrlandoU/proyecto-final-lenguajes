@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:trakit/client/models/week.dart';
+import 'package:trakit/src/firebase/firestore_service.dart';
 
 class SubmitWeekAmountView extends StatefulWidget {
   final int week;
   final double expectedAmount;
   final Function(double) onSubmit;
+  final String? goalId;
 
   const SubmitWeekAmountView({
     super.key,
     required this.week,
     required this.expectedAmount,
     required this.onSubmit,
+    this.goalId,
   });
 
   @override
@@ -19,6 +23,7 @@ class SubmitWeekAmountView extends StatefulWidget {
 class _SubmitWeekAmountViewState extends State<SubmitWeekAmountView> {
   final TextEditingController _amountController = TextEditingController();
   String? _error;
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -26,8 +31,9 @@ class _SubmitWeekAmountViewState extends State<SubmitWeekAmountView> {
     super.dispose();
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
     final text = _amountController.text.trim();
+
     if (text.isEmpty) {
       setState(() {
         _error = "Ingrese un monto válido";
@@ -51,8 +57,43 @@ class _SubmitWeekAmountViewState extends State<SubmitWeekAmountView> {
       return;
     }
 
-    widget.onSubmit(value);
-    Navigator.pop(context); // cerrar la pantalla después de enviar
+    setState(() {
+      _error = null;
+      _isSaving = true;
+    });
+
+    try {
+      if (widget.goalId != null) {
+        final week = Week(
+          id: '',
+          realAmount: value.round(),
+          plannedAmount: widget.expectedAmount.round(),
+          goalId: widget.goalId!,
+          completedStatus: value >= widget.expectedAmount ? 1 : 0,
+        );
+
+        final createdId = await FirestoreService().createWeek(week);
+
+        if (createdId == null) {
+          setState(() {
+            _error = "No se pudo registrar el aporte, inténtalo de nuevo.";
+          });
+          return;
+        }
+      }
+
+      widget.onSubmit(value);
+
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 
   @override
@@ -92,7 +133,7 @@ class _SubmitWeekAmountViewState extends State<SubmitWeekAmountView> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _handleSubmit,
+                onPressed: _isSaving ? null : _handleSubmit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green.shade700,
                   padding: const EdgeInsets.symmetric(vertical: 14),
@@ -100,13 +141,24 @@ class _SubmitWeekAmountViewState extends State<SubmitWeekAmountView> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                child: const Text(
-                  "Registrar",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        ),
+                      )
+                    : const Text(
+                        "Registrar",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ),
           ],
