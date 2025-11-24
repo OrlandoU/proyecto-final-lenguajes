@@ -19,6 +19,7 @@ class FirestoreService {
 
   Future<String?> createGoal(Goal goal, double amount) async {
     try {
+      List<Future> futures = [];
       final data = goal.toJson();
 
       if (currentUserId != null) {
@@ -34,8 +35,9 @@ class FirestoreService {
           goalId: docRef.id,
           number : i + 1
         );
-        await _db.collection('weeks').add(week.toJson());
+         futures.add(_db.collection('weeks').add(week.toJson()));
       }
+      await Future.wait(futures);
       return docRef.id;
     } catch (e) {
       return null;

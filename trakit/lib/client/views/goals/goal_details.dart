@@ -219,7 +219,7 @@ class _GoalDetailsViewState extends State<GoalDetailsView> {
                       ],
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(20),
                       child: SizedBox(
                         height: 180,
                         child: LineChart(
@@ -246,6 +246,17 @@ class _GoalDetailsViewState extends State<GoalDetailsView> {
                                 spots: chartSpots,
                                 barWidth: 4,
                                 color: const Color(0xFF2ECC71),
+                                belowBarData: BarAreaData(
+                                  show: true,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.green.shade700.withOpacity(0.4),
+                                      Colors.green.shade700.withOpacity(0.0),
+                                    ],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
+                                ),
                               ),
                             ],
                           ),

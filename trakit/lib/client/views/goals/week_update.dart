@@ -130,7 +130,7 @@ class _SubmitWeekAmountViewState extends State<SubmitWeekAmountView> {
               child: ElevatedButton(
                 onPressed: _isSaving ? null : _handleSubmit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade700,
+                  backgroundColor: const Color(0xFF2ECC71),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
