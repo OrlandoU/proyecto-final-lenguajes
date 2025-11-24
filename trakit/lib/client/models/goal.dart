@@ -1,7 +1,7 @@
 class Goal {
   final String id;
   final String goalType;
-  final String targetAmount;
+  final double targetAmount;
   final String userId;
   final String title;
   final String description;

@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -107,7 +108,19 @@ class _LoginPageState extends State<LoginPage> {
                   style: IconButton.styleFrom(backgroundColor: Colors.blue[50]),
                 ),
                 IconButton(
-                  onPressed: signInWithGoogle,
+                  onPressed: ()async{
+                    try {
+                      final user = await signInWithGoogle();
+
+                      if (user != null && context.mounted) {
+                        createUser();
+                        context.push('/');
+                      }
+                    } catch (e) {
+                      print(e);
+                    }
+
+                  },
                   icon: const FaIcon(
                     FontAwesomeIcons.google,
                     color: Colors.red,

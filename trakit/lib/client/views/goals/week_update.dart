@@ -6,14 +6,16 @@ class SubmitWeekAmountView extends StatefulWidget {
   final int week;
   final double expectedAmount;
   final Function(double) onSubmit;
-  final String? goalId;
+  final double realAmount;
+  final String id;
 
   const SubmitWeekAmountView({
     super.key,
     required this.week,
+    required this.realAmount,
     required this.expectedAmount,
     required this.onSubmit,
-    this.goalId,
+    required this.id,
   });
 
   @override
@@ -24,6 +26,8 @@ class _SubmitWeekAmountViewState extends State<SubmitWeekAmountView> {
   final TextEditingController _amountController = TextEditingController();
   String? _error;
   bool _isSaving = false;
+
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   void dispose() {
@@ -49,13 +53,6 @@ class _SubmitWeekAmountViewState extends State<SubmitWeekAmountView> {
       return;
     }
 
-    if (value > widget.expectedAmount) {
-      setState(() {
-        _error =
-            "El monto no puede superar L. ${widget.expectedAmount.toStringAsFixed(0)}";
-      });
-      return;
-    }
 
     setState(() {
       _error = null;
@@ -63,16 +60,14 @@ class _SubmitWeekAmountViewState extends State<SubmitWeekAmountView> {
     });
 
     try {
-      if (widget.goalId != null) {
-        final week = Week(
-          id: '',
-          realAmount: value.round(),
-          plannedAmount: widget.expectedAmount.round(),
-          goalId: widget.goalId!,
-          completedStatus: value >= widget.expectedAmount ? 1 : 0,
-        );
+      if (widget.id != null) {
+        final week = {
+          'monto_real': widget.realAmount + double.parse(_amountController.text),
+          'objetivo': widget.expectedAmount,
+          'estado_completado': widget.realAmount + double.parse(_amountController.text) >= widget.expectedAmount,
+        };
 
-        final createdId = await FirestoreService().createWeek(week);
+        final createdId = await FirestoreService().updateWeek(widget.id, week);
 
         if (createdId == null) {
           setState(() {

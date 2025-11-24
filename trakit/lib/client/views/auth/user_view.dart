@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
+import 'package:trakit/src/firebase/firestore_service.dart';
+import 'package:trakit/client/models/goal.dart';
+import 'package:trakit/client/models/week.dart';
 
 class UserView extends StatelessWidget {
   const UserView({super.key});
@@ -6,6 +11,8 @@ class UserView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final user = FirebaseAuth.instance.currentUser;
+    final firestoreService = FirestoreService();
 
     return Scaffold(
       appBar: AppBar(
@@ -18,9 +25,9 @@ class UserView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // User Greeting
+            // Saludo
             Text(
-              "Hola, Orlando 👋",
+              "Hola, ${user?.displayName ?? 'Usuario'} 👋",
               style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -32,10 +39,9 @@ class UserView extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-
             const SizedBox(height: 24),
 
-            // User Info Card
+            // Tarjeta de información del usuario
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -52,11 +58,12 @@ class UserView extends StatelessWidget {
                 padding: const EdgeInsets.all(20),
                 child: Row(
                   children: [
-                    const CircleAvatar(
+                    CircleAvatar(
                       radius: 40,
-                      backgroundImage: AssetImage(
-                        'assets/avatar.png',
-                      ), // replace with your user image
+                      backgroundImage: user?.photoURL != null
+                          ? NetworkImage(user!.photoURL!)
+                          : const AssetImage('assets/avatar.png')
+                                as ImageProvider,
                     ),
                     const SizedBox(width: 18),
                     Expanded(
@@ -64,14 +71,14 @@ class UserView extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Orlando Umanzor",
+                            user?.displayName ?? 'Nombre de Usuario',
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            "orlando@example.com",
+                            user?.email ?? 'email@example.com',
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
@@ -83,38 +90,34 @@ class UserView extends StatelessWidget {
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
 
-            // Stats Card
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _statItem("Objetivos", "12"),
-                    _statItem("Ahorro", "L. 5,250"),
-                    _statItem("Semanas completadas", "30"),
-                  ],
-                ),
-              ),
+            // Estadísticas usando FutureBuilder
+            FutureBuilder<Map<String, dynamic>>(
+              future: _calculateStats(user?.uid ?? ''),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (!snapshot.hasData || snapshot.hasError) {
+                  return const Center(
+                    child: Text("Error al cargar estadísticas"),
+                  );
+                }
+
+                final stats = snapshot.data!;
+                return _statsCard(
+                  stats['totalGoals'],
+                  stats['totalSaved'],
+                  stats['totalWeeksCompleted'],
+                );
+              },
             ),
 
             const SizedBox(height: 20),
 
-            // Quick Actions
+            // Acciones rápidas
             Text(
               "Acciones rápidas",
               style: theme.textTheme.titleLarge?.copyWith(
@@ -122,20 +125,73 @@ class UserView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-
-            _actionCard(icon: Icons.edit, title: "Editar Perfil", onTap: () {}),
-            _actionCard(
-              icon: Icons.lock,
-              title: "Cambiar contraseña",
-              onTap: () {},
-            ),
             _actionCard(
               icon: Icons.logout,
               title: "Cerrar sesión",
-              onTap: () {},
+              onTap: () async {
+                   await FirebaseAuth.instance.signOut(); // cierra la sesión
+
+                if (!context.mounted) return;
+
+                context.replace('/login');
+              },
             ),
 
             const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- Función para calcular estadísticas ---
+  Future<Map<String, dynamic>> _calculateStats(String userId) async {
+    final firestore = FirestoreService();
+
+    // Obtener todos los objetivos del usuario
+    final goals = await firestore.getGoals(userId: userId);
+    int totalGoals = goals.length;
+
+    // Obtener todas las semanas de cada objetivo
+    List<Week> allWeeks = [];
+    for (var g in goals) {
+      final weeks = await firestore.getWeeksByGoal(g.id);
+      allWeeks.addAll(weeks);
+    }
+
+    int totalWeeksCompleted = allWeeks.where((w) => w.completedStatus).length;
+
+    double totalSaved = allWeeks.fold(0, (sum, w) => sum + w.realAmount);
+
+    return {
+      'totalGoals': totalGoals,
+      'totalWeeksCompleted': totalWeeksCompleted,
+      'totalSaved': totalSaved,
+    };
+  }
+
+  // --- Tarjeta de estadísticas ---
+  Widget _statsCard(int goals, double saved, int completedWeeks) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _statItem("Objetivos", goals.toString()),
+            _statItem("Ahorro", "L. ${saved.toStringAsFixed(0)}"),
+            _statItem("Semanas completadas", completedWeeks.toString()),
           ],
         ),
       ),

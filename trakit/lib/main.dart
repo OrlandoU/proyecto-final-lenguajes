@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +13,7 @@ import 'package:trakit/client/views/auth/login_view.dart';
 import 'package:trakit/client/views/goals/select_goal.dart';
 import 'package:trakit/client/views/auth/signup_view.dart';
 import 'package:trakit/client/models/goal.dart';
+import 'package:trakit/src/firebase/firestore_service.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -31,16 +33,21 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.greenAccent)),
       routerConfig: GoRouter(
         initialLocation: '/',
-        redirect: (context, state) {
-          // Aquí puedes agregar lógica de redirección basada en la autenticación
-          // final user = FirebaseAuth.instance.currentUser;
+        redirect: (context, state) async {
+           final user = FirebaseAuth.instance.currentUser;
 
-          // final freeRoutes = {'/signup'};
+           final freeRoutes = {'/signup'};
 
-          // if (user == null && !freeRoutes.contains(state.fullPath)) {
-          //   return '/login';
-          // }
-
+           if (user == null && !freeRoutes.contains(state.fullPath)) {
+             return '/login';
+          }
+          if (user != null && state.fullPath == '/') {
+                final goalsSnapshot = await FirestoreService().getGoals(userId: user.uid);
+                if (goalsSnapshot.isEmpty) {
+                  
+                  return '/new_goal'; // Redirige al crear primer objetivo
+                }
+              }
           return null;
         },
         routes: [
@@ -101,11 +108,12 @@ class MyApp extends StatelessWidget {
             builder: (context, state) {
               final data = state.extra as Map<String, dynamic>;
               return SubmitWeekAmountView(
-                week: data['week'] as int,
+                week: data['weekNumber'] as int,
                 expectedAmount: data['expectedAmount'] as double,
                 onSubmit: (double value) {
                 },
-                goalId: data['goalId'] as String,
+                realAmount: data['realAmount'],
+                id: data['id']
               );
             },
           ),

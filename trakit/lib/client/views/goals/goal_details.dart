@@ -18,6 +18,20 @@ class GoalDetailsView extends StatefulWidget {
 class _GoalDetailsViewState extends State<GoalDetailsView> {
   final FirestoreService _firestoreService = FirestoreService();
 
+  late DateTime startDate;
+  late DateTime estimatedEndDate;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Fecha de inicio del objetivo
+    startDate = DateTime.parse(widget.goal.startDate);
+
+    // 52 semanas fijas = 364 días
+    estimatedEndDate = startDate.add(const Duration(days: 364));
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -47,7 +61,7 @@ class _GoalDetailsViewState extends State<GoalDetailsView> {
           final weeks = snapshot.data ?? [];
 
           // --- Cálculos de progreso ---
-          final double target = _parseTarget(widget.goal.targetAmount);
+          final double target = widget.goal.targetAmount;
           final double totalContributed = weeks.fold<double>(
             0,
             (sum, w) => sum + w.realAmount.toDouble(),
@@ -56,10 +70,8 @@ class _GoalDetailsViewState extends State<GoalDetailsView> {
               ? (totalContributed / target) * 100
               : 0;
 
-          // Semana actual: primera con completedStatus == 0, si no hay, siguiente
-          int currentWeekIndex = weeks.indexWhere(
-            (w) => w.completedStatus == 0,
-          );
+          // Semana actual
+          int currentWeekIndex = weeks.indexWhere((w) => !w.completedStatus);
 
           if (weeks.isEmpty) {
             currentWeekIndex = 0;
@@ -71,7 +83,6 @@ class _GoalDetailsViewState extends State<GoalDetailsView> {
               ? 1
               : (currentWeekIndex + 1);
 
-          // Datos de la "semana actual"
           double currentWeekAmount = 0;
           double currentWeekTarget = 0;
           double currentWeekProgressPercent = 0;
@@ -85,34 +96,47 @@ class _GoalDetailsViewState extends State<GoalDetailsView> {
                   (currentWeekAmount / currentWeekTarget) * 100;
             }
           } else {
-            // Si no hay semanas aún, asumimos un target proporcional (ej: /12)
-            currentWeekTarget = target > 0 ? target / 12 : 0;
-            currentWeekAmount = 0;
-            currentWeekProgressPercent = 0;
+            currentWeekTarget = target > 0 ? target / 52 : 0;
           }
 
-          // Lista para el gráfico (usamos numero de semana como X)
-          final chartSpots = weeks.isEmpty
-              ? <FlSpot>[]
-              : weeks.asMap().entries.map((entry) {
-                  final idx = entry.key;
-                  final w = entry.value;
-                  return FlSpot((idx + 1).toDouble(), w.realAmount.toDouble());
-                }).toList();
+          // Datos para el gráfico
+          final chartSpots = weeks.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final w = entry.value;
+            return FlSpot((idx + 1).toDouble(), w.realAmount.toDouble());
+          }).toList();
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Goal info
+                // Información del objetivo
                 Text(
                   widget.goal.title,
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Inicio: ${startDate.day}/${startDate.month}/${startDate.year}",
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      "Fin estimado: ${estimatedEndDate.day}/${estimatedEndDate.month}/${estimatedEndDate.year}",
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
                 Text(
                   widget.goal.description,
                   style: theme.textTheme.bodyLarge?.copyWith(
@@ -121,26 +145,7 @@ class _GoalDetailsViewState extends State<GoalDetailsView> {
                 ),
                 const SizedBox(height: 20),
 
-                // Progreso total
-                Text(
-                  "Progreso total: ${totalProgressPercent.toStringAsFixed(0)}% "
-                  "(L. ${totalContributed.toStringAsFixed(0)} de L. ${target.toStringAsFixed(0)})",
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green.shade700,
-                  ),
-                ),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: (totalProgressPercent.clamp(0, 100)) / 100,
-                    minHeight: 10,
-                    backgroundColor: Colors.grey.shade300,
-                    color: const Color(0xFF2ECC71),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
+                // Progreso general
                 Text(
                   "Progreso general: ${totalProgressPercent.toStringAsFixed(0)}%",
                   style: theme.textTheme.titleMedium?.copyWith(
@@ -148,6 +153,7 @@ class _GoalDetailsViewState extends State<GoalDetailsView> {
                     color: Colors.blue.shade700,
                   ),
                 ),
+                const SizedBox(height: 4),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: LinearProgressIndicator(
@@ -159,6 +165,7 @@ class _GoalDetailsViewState extends State<GoalDetailsView> {
                 ),
                 const SizedBox(height: 16),
 
+                // Totales
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -178,7 +185,7 @@ class _GoalDetailsViewState extends State<GoalDetailsView> {
                 ),
                 const SizedBox(height: 16),
 
-                // Card de progreso semana actual
+                // Progreso semana actual
                 _progressCard(
                   context: context,
                   title: "Progreso semana $currentWeekNumber",
@@ -190,13 +197,14 @@ class _GoalDetailsViewState extends State<GoalDetailsView> {
                     _openWeekUpdate(
                       weekNumber: currentWeekNumber,
                       expectedAmount: currentWeekTarget,
+                      realAmount: currentWeekAmount,
+                      id: weeks[currentWeekIndex].id,
                     );
                   },
                 ),
-
                 const SizedBox(height: 20),
 
-                // Line Chart
+                // Gráfico de progreso
                 if (chartSpots.isNotEmpty)
                   Container(
                     decoration: BoxDecoration(
@@ -259,15 +267,26 @@ class _GoalDetailsViewState extends State<GoalDetailsView> {
                   const Text(
                     "Aún no has registrado semanas para este objetivo.",
                   ),
+
                 ...weeks.asMap().entries.map((entry) {
                   final idx = entry.key;
                   final w = entry.value;
-                  return _weekItem(
-                    context,
-                    week: idx + 1,
-                    amount:
-                        "L. ${w.realAmount.toStringAsFixed(0)} / L. ${w.plannedAmount.toStringAsFixed(0)}",
-                    completed: w.completedStatus == 1,
+                  return GestureDetector(
+                    onTap: () {
+                      _openWeekUpdate(
+                        weekNumber: w.number,
+                        expectedAmount: w.plannedAmount,
+                        realAmount: w.realAmount,
+                        id: w.id,
+                      );
+                    },
+                    child: _weekItem(
+                      context,
+                      week: w.number,
+                      amount:
+                          "L. ${w.realAmount.toStringAsFixed(0)} / L. ${w.plannedAmount.toStringAsFixed(0)}",
+                      completed: w.completedStatus,
+                    ),
                   );
                 }),
                 const SizedBox(height: 40),
@@ -279,21 +298,19 @@ class _GoalDetailsViewState extends State<GoalDetailsView> {
     );
   }
 
-  double _parseTarget(String raw) {
-    final cleaned = raw.replaceAll('L', '').replaceAll(',', '').trim();
-    return double.tryParse(cleaned) ?? 0;
-  }
-
   void _openWeekUpdate({
     required int weekNumber,
     required double expectedAmount,
+    required double realAmount,
+    required String id,
   }) {
     context.pushNamed(
       'week-update',
       extra: {
-        'goalId': widget.goal.id,
-        'week': weekNumber,
+        'weekNumber': weekNumber,
         'expectedAmount': expectedAmount,
+        'realAmount': realAmount,
+        'id': id,
       },
     );
   }
@@ -355,8 +372,7 @@ class _GoalDetailsViewState extends State<GoalDetailsView> {
           const SizedBox(height: 6),
           Text("${clampedPercent.toStringAsFixed(0)}% completado"),
           Text(
-            "Monto aportado: L. ${contributed.toStringAsFixed(0)} "
-            "/ L. ${target.toStringAsFixed(0)}",
+            "Monto aportado: L. ${contributed.toStringAsFixed(0)} / L. ${target.toStringAsFixed(0)}",
           ),
           if (showButton && onButtonPressed != null)
             Padding(

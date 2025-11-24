@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:trakit/client/components/utils.dart';
 import 'package:trakit/client/models/goal.dart';
 import 'package:trakit/src/firebase/firestore_service.dart';
@@ -123,7 +124,7 @@ class _CreateGoalViewState extends State<CreateGoalView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _label("Meta final"),
+        _label("Monto fijo"),
         _inputField(
           controller: amountController,
           hint: "Ej: 10,000",
@@ -137,19 +138,12 @@ class _CreateGoalViewState extends State<CreateGoalView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _label("Meta final"),
+        _label("Monto inicial"),
         _inputField(
           controller: amountController,
           hint: "Ej: 10,000",
           keyboardType: TextInputType.number,
-        ),
-        const SizedBox(height: 20),
-        _label("Incremento por semana"),
-        _inputField(
-          controller: incrementalController,
-          hint: "Ej: 10",
-          keyboardType: TextInputType.number,
-        ),
+        )
       ],
     );
   }
@@ -217,37 +211,32 @@ class _CreateGoalViewState extends State<CreateGoalView> {
     if (amountText.isEmpty) {
       Utils.showSnackBar(
         context: context,
-        title: "La meta final es obligatoria",
-        color: Colors.red,
-      );
-      return;
-    }
-
-    if (widget.mode == 'incremental' && incrementText.isEmpty) {
-      Utils.showSnackBar(
-        context: context,
-        title: "El incremento por semana es obligatorio",
+        title: "El monto es obligatorio",
         color: Colors.red,
       );
       return;
     }
 
     setState(() => _saving = true);
+    double targetAmount = 0;
+    if (widget.mode == "fijo") {
+      targetAmount = double.parse(amountText) * 52;
+    } else if (widget.mode == "incremental") {
+      targetAmount = double.parse(amountText) * 1378; // suma de 1 a 52
+    }
 
     try {
-      final cleanedAmount = amountText.replaceAll(',', '');
-
       final goal = Goal(
         id: '',
         goalType: widget.mode,
-        targetAmount: cleanedAmount,
+        targetAmount: targetAmount,
         userId: _firestoreService.currentUserId ?? '',
         title: title,
         description: description,
-        startDate: DateTime.now().toIso8601String(),
+        startDate: DateTime.now().toIso8601String()
       );
 
-      final newId = await _firestoreService.createGoal(goal);
+      final newId = await _firestoreService.createGoal(goal, double.parse(amountText));
 
       if (!mounted) return;
 
@@ -257,7 +246,7 @@ class _CreateGoalViewState extends State<CreateGoalView> {
           title: "Objetivo creado correctamente",
           color: Colors.green,
         );
-        Navigator.pop(context);
+        context.pushNamed('home');
       } else {
         Utils.showSnackBar(
           context: context,

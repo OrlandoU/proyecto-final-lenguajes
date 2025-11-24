@@ -1,28 +1,32 @@
-class User {
+class UserE {
   final String id;
   final String email;
-  final String username;
-  final String password;
+  final String displayName;
+  final DateTime dateCreated;
 
-  User({
-    required this.id,
+  UserE({
+    this.id  = '',
     required this.email,
-    required this.username,
-    required this.password,
+    required this.displayName,
+    required this.dateCreated,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) => User(
-        id: json['id'].toString(),
-        email: json['correo'],
-        username: json['nombre_usuario'],
-        password: json['password'],
-      );
+  // Create a User from JSON (e.g., from your backend)
+  factory UserE.fromJson(Map<String, dynamic> json) {
+    return UserE(
+      id: json['id'].toString(),
+      email: json['correo'],
+      displayName: json['nombre_usuario'],
+      dateCreated: DateTime.parse(json['fecha_creacion']),
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'correo': email,
-      'nombre_usuario': username,
-      'password': password,
+      'nombre_usuario': displayName,
+      'fecha_creacion': dateCreated.toIso8601String(),
     };
   }
 }

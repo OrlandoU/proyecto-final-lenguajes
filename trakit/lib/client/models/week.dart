@@ -1,16 +1,18 @@
 class Week {
   final String id;
-  final int realAmount;
-  final int plannedAmount;
+  final double realAmount;
+  final double plannedAmount;
   final String goalId;
-  final int completedStatus;
+  final bool completedStatus;
+  final int number;
 
   Week({
-    required this.id,
+    this.id = '',
     required this.realAmount,
     required this.plannedAmount,
     required this.goalId,
     required this.completedStatus,
+    required this.number
   });
 
   factory Week.fromJson(Map<String, dynamic> json) => Week(
@@ -19,6 +21,7 @@ class Week {
         plannedAmount: json['objetivo'],
         goalId: json['idObjetivo'].toString(),
         completedStatus: json['estado_completado'],
+        number: json['numero']
       );
 
   Map<String, dynamic> toJson() {
@@ -27,6 +30,7 @@ class Week {
       'objetivo': plannedAmount,
       'idObjetivo': goalId,
       'estado_completado': completedStatus,
+      'numero': number
     };
   }
 }

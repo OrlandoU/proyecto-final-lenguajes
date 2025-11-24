@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:trakit/client/models/goal.dart';
@@ -8,6 +10,7 @@ import 'package:trakit/src/firebase/firestore_service.dart';
 class GoalsView extends StatelessWidget {
   GoalsView({super.key});
 
+  final user = FirebaseAuth.instance.currentUser;
   final FirestoreService _firestoreService = FirestoreService();
 
   @override
@@ -110,11 +113,7 @@ class GoalsView extends StatelessWidget {
   }
 
   double _calculateProgress(Goal goal, List<Week> weeks) {
-    final String rawTarget = goal.targetAmount;
-    final double target = double.tryParse(
-          rawTarget.replaceAll(',', '').replaceAll('L', '').trim(),
-        ) ??
-        0;
+    final double target = goal.targetAmount;
 
     if (target <= 0) return 0;
 
@@ -157,7 +156,7 @@ class GoalsView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: Text(
