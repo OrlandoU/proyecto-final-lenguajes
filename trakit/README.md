@@ -1,6 +1,12 @@
 # trakit
 
 A new Flutter project.
+## Integrantes
+
+- *Maynor Josué Padilla Navarrete*  ||  *20242001105*
+- *Orlando José Umanzor Zelaya*     ||  *20232001355*
+- *Daniel Orlando Fuentes Teruel*   ||  *20212020451*
+
 
 ## Getting Started
 
